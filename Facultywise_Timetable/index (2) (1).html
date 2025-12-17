@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Faculty Wise Timetable</title>
+
+    <!-- PapaParse CSV Parser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 90%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: lightblue;
+        }
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        select, button {
+            padding: 6px;
+            margin-top: 10px;
+        }
+        /* 🔥 Highlight style */
+        .highlight {
+            background-color: pink;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Faculty-wise Timetable</h2>
+
+<input type="file" id="csvFile" accept=".csv"><br><br>
+
+<select id="facultySelect">
+    <option value="">-- Select Faculty --</option>
+</select>
+
+<button onclick="showFacultyTimetable()">Show Timetable</button>
+
+<div id="tables"></div>
+
+<script>
+let csvData = [];
+const HIGHLIGHT_BATCH = "VI-SU-B2";
+
+// Load CSV
+document.getElementById("csvFile").addEventListener("change", function () {
+    Papa.parse(this.files[0], {
+        header: true,
+        skipEmptyLines: true,
+        complete: function (result) {
+            csvData = result.data;
+            populateFacultyDropdown();
+            alert("CSV loaded successfully");
+        }
+    });
+});
+
+// Populate faculty dropdown
+function populateFacultyDropdown() {
+    const select = document.getElementById("facultySelect");
+    select.innerHTML = `<option value="">-- Select Faculty --</option>`;
+
+    const facultySet = new Set();
+
+    csvData.forEach(row => {
+        if (row["FACULTY"] && row["FACULTY"].trim() !== "") {
+            facultySet.add(row["FACULTY"].trim());
+        }
+    });
+
+    [...facultySet].sort().forEach(faculty => {
+        const opt = document.createElement("option");
+        opt.value = faculty;
+        opt.textContent = faculty;
+        select.appendChild(opt);
+    });
+}
+
+// Show timetable
+function showFacultyTimetable() {
+    const faculty = document.getElementById("facultySelect").value;
+    const container = document.getElementById("tables");
+    container.innerHTML = "";
+
+    if (!faculty) {
+        alert("Please select a faculty");
+        return;
+    }
+
+    const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    let timetable = {};
+    days.forEach(day => timetable[day] = { FN: [], AN: [] });
+
+    csvData.forEach(row => {
+        if (row["FACULTY"]?.trim() === faculty) {
+            const day = row["DAY"]?.toUpperCase();
+            const session = row["SESSION"]?.toUpperCase();
+
+            if (timetable[day] && (session === "FN" || session === "AN")) {
+                const isHighlight = row["BATCH"] === HIGHLIGHT_BATCH;
+
+                const content = `
+                    <div class="${isHighlight ? 'highlight' : ''}">
+                        ${row["COURSE"]}<br>
+                        Room: ${row["ROOM"]}<br>
+                        Batch: ${row["BATCH"]}
+                    </div>
+                `;
+                timetable[day][session].push(content);
+            }
+        }
+    });
+
+    container.innerHTML += `<div class="title">Faculty: ${faculty}</div>`;
+
+    let tableHTML = `
+        <table>
+            <tr>
+                <th>DAY</th>
+                <th>FN</th>
+                <th rowspan="7">L<br>U<br>N<br>C<br>H</th>
+                <th>AN</th>
+            </tr>
+    `;
+
+    days.forEach(day => {
+        tableHTML += `
+            <tr>
+                <td>${day}</td>
+                <td>${timetable[day].FN.join("<hr>")}</td>
+                <td>${timetable[day].AN.join("<hr>")}</td>
+            </tr>
+        `;
+    });
+
+    tableHTML += "</table>";
+    container.innerHTML += tableHTML;
+}
+</script>
+
+</body>
+</html>
